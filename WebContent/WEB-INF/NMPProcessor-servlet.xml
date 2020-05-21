@@ -1,0 +1,93 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task" xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+   http://www.springframework.org/schema/beans     
+   http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+   http://www.springframework.org/schema/context 
+   http://www.springframework.org/schema/context/spring-context-3.0.xsd
+   http://www.springframework.org/schema/task 
+   http://www.springframework.org/schema/task/spring-task-4.0.xsd
+   http://www.springframework.org/schema/util
+   http://www.springframework.org/schema/util/spring-util-2.5.xsd">
+
+	<context:component-scan base-package="com.tcs.nmp" />
+
+	<!-- Initialization for data source -->
+	<bean id="dataSource"
+		class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<property name="url" value="jdbc:mysql://localhost:3306/hackathon" />
+		<property name="username" value="admin" />
+		<property name="password" value="password@1" />
+	</bean>
+	
+	<!-- JDBC Template Definitions Starts -->
+
+	<bean id="batchJDBCTemplate" class="com.tcs.nmp.dao.impl.BatchJDBCTemplate">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+
+
+	<bean id="fbMessageJDBCTemplate" class="com.tcs.nmp.dao.impl.FBMessageJDBCTemplate">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<bean id="predictMessageJDBCTemplate" class="com.tcs.nmp.dao.impl.PredictionMessageJDBCTemplate">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<bean id="processLogJDBCTemplate" class ="com.tcs.nmp.dao.impl.ProcessingLogJDBCTemplate">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+	<!-- JDBC Template Definitions Starts -->
+	<!-- Batch Defnition starts -->
+
+	<task:annotation-driven executor="executorWithCallerRunsPolicy"
+		scheduler="batchScheduler" />
+
+	<task:scheduled-tasks scheduler="batchScheduler">
+		<task:scheduled ref="fbMessageSenderReceiverImpl"
+			method="receive" cron="0/5 * * * * ?" />
+	</task:scheduled-tasks>
+
+	<task:scheduler id="batchScheduler" pool-size="10" />
+	<task:executor id="executorWithCallerRunsPolicy"
+		pool-size="5-25" queue-capacity="100" rejection-policy="CALLER_RUNS" />
+
+	<!-- Batch Definition ends -->
+	
+	<!-- Handler Definitions Starts -->
+	<bean id="dataHandler" class="com.tcs.nmp.handler.DataHandlerImpl">
+	<property name="actionLabelList" ref="actionLabelList"></property>
+	<property name="confirmationLabelList" ref="confirmationLabelList"></property>
+	<property name="labelValidatorMap" ref="labelValidatorMap"></property>
+	</bean>
+
+	<util:list id="actionLabelList" value-type="java.lang.String">
+		<value>Change_of_Address</value>
+		<value>Change_of_phone</value>
+		<value>Change_of_email</value>
+	</util:list>
+
+	<util:list id="confirmationLabelList" value-type="java.lang.String">
+		<value>Yes</value>
+		<value>No</value>
+	</util:list>
+	<util:map id ="labelValidatorMap" key-type="java.lang.String" value-type="java.lang.String">
+		<entry key="Change_of_Address" value="baseAddressProcessorImpl"></entry>
+		<entry key="Change_of_phone" value="baseAddressProcessorImpl"></entry>
+		<entry key="Change_of_email" value="baseAddressProcessorImpl"></entry>
+		<entry key="Yes" value="baseAddressProcessorImpl"></entry>
+		<entry key="No" value="baseAddressProcessorImpl"></entry>
+	</util:map>
+	
+	<!-- Handler Definitions End -->
+	
+	<bean id="googleNaturalLanguageProcessorImpl" class="com.tcs.nmp.processor.impl.GoogleNaturalLanguageProcessorImpl" />
+	<bean id="emailProcessorImpl" class="com.tcs.nmp.processor.impl.EmailProcessorImpl" />
+	<bean id="baseAddressProcessorImpl" class="com.tcs.nmp.addressprocessor.impl.BaseAddressProcessorImpl" />
+</beans>
